@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { getUser } from "@/lib/auth";
+import { isSupabaseConfigured } from "@/lib/supabase/env";
 
 const FEATURES = [
   {
@@ -54,7 +55,9 @@ const STEPS = [
 ];
 
 export default async function LandingPage() {
-  const user = await getUser();
+  // The landing page has to render before Supabase is configured, so treat a
+  // missing config as "signed out" instead of failing the whole page.
+  const user = isSupabaseConfigured() ? await getUser() : null;
 
   return (
     <div className="min-h-screen bg-background">

@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { isSupabaseConfigured, requirePublicEnv } from "./lib/supabase/env";
+
 /**
  * Next.js 16 Proxy (formerly middleware).
  *
@@ -11,6 +13,10 @@ import { NextResponse, type NextRequest } from "next/server";
  *
  * Authorization is NOT enforced here alone — every Server Action and data
  * helper re-checks access, because Proxy can be bypassed for server functions.
+ *
+ * When Supabase is not configured there is no session to read. Rather than
+ * letting the SDK throw on every request, public pages are served as-is and
+ * anything protected is sent to the setup screen.
  */
 
 const PUBLIC_PATHS = [
@@ -20,41 +26,54 @@ const PUBLIC_PATHS = [
   "/forgot-password",
   "/reset-password",
   "/auth",
+  "/setup",
 ];
+
+const SETUP_PATH = "/setup";
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (!isSupabaseConfigured()) {
+    // The landing page and the setup screen are the only pages that do not need
+    // a database. Everything else, including the auth forms, would fail on
+    // submit, so send it to setup instead.
+    if (pathname === "/" || pathname === SETUP_PATH) {
+      return NextResponse.next({ request });
+    }
+    const setup = request.nextUrl.clone();
+    setup.pathname = SETUP_PATH;
+    setup.search = "";
+    return NextResponse.redirect(setup);
+  }
+
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
-          });
-        },
+  const { url, publishableKey } = requirePublicEnv();
+  const supabase = createServerClient(url, publishableKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        response = NextResponse.next({ request });
+        cookiesToSet.forEach(({ name, value, options }) => {
+          response.cookies.set(name, value, options);
+        });
       },
     },
-  );
+  });
 
   // IMPORTANT: do not run code between createClient() and getUser() — it can
   // cause hard-to-debug session desync issues.
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const { pathname } = request.nextUrl;
 
   if (!user && !isPublicPath(pathname)) {
     const url = request.nextUrl.clone();

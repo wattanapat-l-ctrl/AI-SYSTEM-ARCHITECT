@@ -112,7 +112,7 @@ create table if not exists public.profiles (
   email       text        not null default '',
   full_name   text,
   avatar_url  text,
-  -- Global platform role. The first ever user is promoted to 'admin' by trigger.
+  -- Global platform role. Promoted to 'admin' by trigger on email confirmation.
   role        public.app_role not null default 'viewer',
   job_title   text,
   created_at  timestamptz not null default now(),
@@ -395,23 +395,30 @@ security definer
 set search_path = public
 as $$
 declare
-  is_first_user boolean;
-  derived_name   text;
+  derived_name text;
 begin
-  is_first_user := not exists (select 1 from public.profiles);
-
   derived_name := coalesce(
     nullif(new.raw_user_meta_data ->> 'full_name', ''),
     nullif(new.raw_user_meta_data ->> 'name', ''),
     split_part(new.email, '@', 1)
   );
 
+  -- Signup yields 'viewer' unless the address is already confirmed at insert
+  -- (email confirmation disabled), in which case the first account bootstraps
+  -- the platform admin role. When confirmations are enabled, promotion happens
+  -- on confirmation via public.promote_first_confirmed_admin(), so an address
+  -- that never confirms can never end up holding admin.
   insert into public.profiles (id, email, full_name, role)
   values (
     new.id,
     coalesce(new.email, ''),
     derived_name,
-    case when is_first_user then 'admin'::public.app_role else 'viewer'::public.app_role end
+    case
+      when new.email_confirmed_at is not null
+       and not exists (select 1 from public.profiles)
+        then 'admin'::public.app_role
+      else 'viewer'::public.app_role
+    end
   )
   on conflict (id) do update
     set email = excluded.email,
@@ -421,10 +428,35 @@ begin
 end;
 $$;
 
+-- Platform bootstrap: the first account with a confirmed address becomes admin.
+create or replace function public.promote_first_confirmed_admin()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.email_confirmed_at is not null
+     and old.email_confirmed_at is null
+     and not exists (select 1 from public.profiles where role = 'admin') then
+    update public.profiles
+       set role = 'admin'
+     where id = new.id;
+  end if;
+
+  return new;
+end;
+$$;
+
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+drop trigger if exists on_auth_user_confirmed on auth.users;
+create trigger on_auth_user_confirmed
+  after update of email_confirmed_at on auth.users
+  for each row execute function public.promote_first_confirmed_admin();
 
 -- 4.3 project owner becomes admin member ------------------------------------
 create or replace function public.handle_new_project()

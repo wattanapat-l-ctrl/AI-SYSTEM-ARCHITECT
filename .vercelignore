@@ -1,0 +1,8 @@
+# Never upload local secrets to Vercel.
+# Environment variables belong in Project Settings -> Environment Variables.
+.env*
+!.env.local.example
+
+# Supabase CLI link metadata
+supabase/.temp
+.vercel

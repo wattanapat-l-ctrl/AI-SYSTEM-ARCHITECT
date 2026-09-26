@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 import { ThemeToggle } from "@/components/theme-toggle";
-import { SupabaseClientStatus } from "@/components/supabase-client-status";
 import {
   isSupabaseConfigured,
   missingPublicEnv,
@@ -102,15 +101,13 @@ export default async function SetupPage() {
           <p className="mt-6 text-xs text-muted-foreground">
             Put the values in <code className="font-mono">.env.local</code> for local development
             (copy <code className="font-mono">.env.local.example</code>), or add them to your
-            host&apos;s environment settings. The two public variables{" "}
-            <code className="font-mono">NEXT_PUBLIC_*</code> are inlined into the browser bundle
-            when the app is built, so on a hosted platform you must redeploy after adding them.
-            The names must match exactly, prefix included.
+            host&apos;s environment settings. The names must match exactly, prefix included.
           </p>
-
-          <div className="mt-4 border-t border-border pt-4">
-            <SupabaseClientStatus serverConfigured={configured} />
-          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            On a hosted platform the environment is captured per deployment, so a running
+            deployment keeps reporting missing variables until you redeploy. Auth itself
+            happens in Server Actions, so no Supabase key is ever sent to the browser.
+          </p>
         </div>
       </div>
     </div>

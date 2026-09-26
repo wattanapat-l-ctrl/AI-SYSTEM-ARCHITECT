@@ -57,29 +57,78 @@ export default async function SetupPage() {
               className={`h-2 w-2 rounded-full ${configured ? "bg-emerald-500" : "bg-amber-500"}`}
               aria-hidden
             />
-            <h1 className="text-lg font-semibold tracking-tight">
-              {configured ? "Supabase is configured" : "Supabase is not configured"}
-            </h1>
+          <h1 className="text-lg font-semibold tracking-tight">
+            {configured ? "Setup complete" : "Supabase is not configured"}
+          </h1>
           </div>
 
-          <p className="mt-2 text-sm text-muted-foreground">
-            {configured
-              ? "The required environment variables are present. If anything still fails, restart the dev server so the new values are picked up."
-              : "The application shell is running, but it has no database to talk to yet. Add the variables below to finish setup."}
-          </p>
-
-          {missing.length > 0 ? (
-            <div className="mt-5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-              <p className="text-xs font-medium tracking-wide text-amber-600 uppercase dark:text-amber-400">
-                Missing {missing.length === 1 ? "variable" : "variables"}
+          {configured ? (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Nothing is left to configure. The setup steps below are kept for reference.
               </p>
-              <ul className="mt-2 space-y-1 font-mono text-xs">
-                {missing.map((name) => (
-                  <li key={name}>{name}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Link
+                  href="/dashboard"
+                  className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-all hover:brightness-110"
+                >
+                  Go to dashboard
+                </Link>
+                <Link
+                  href="/login"
+                  className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-muted"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/signup"
+                  className="inline-flex h-9 items-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-muted"
+                >
+                  Create an account
+                </Link>
+              </div>
+
+              <div className="mt-5 rounded-lg border border-border bg-muted/30 p-4">
+                <p className="text-xs font-medium">If sign-in is rejected</p>
+                <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+                  <li>
+                    <strong className="text-foreground">Email not confirmed</strong> — open Supabase
+                    Dashboard, then Authentication, Users, click your row and choose Confirm email.
+                    New accounts need this once.
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Invalid login credentials</strong> — sign up
+                    again with the same address; do not create a second account.
+                  </li>
+                  <li>
+                    <strong className="text-foreground">Still reports missing variables</strong> —
+                    the deployment predates the variables. Redeploy it.
+                  </li>
+                </ul>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-muted-foreground">
+                The application shell is running, but it has no database to talk to yet. Add the
+                variables below to finish setup.
+              </p>
+
+              {missing.length > 0 ? (
+                <div className="mt-5 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                  <p className="text-xs font-medium tracking-wide text-amber-600 uppercase dark:text-amber-400">
+                    Missing {missing.length === 1 ? "variable" : "variables"}
+                  </p>
+                  <ul className="mt-2 space-y-1 font-mono text-xs">
+                    {missing.map((name) => (
+                      <li key={name}>{name}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          )}
 
           <ol className="mt-6 space-y-5">
             {STEPS.map((step, index) => (

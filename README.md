@@ -39,13 +39,18 @@ Then fill in `.env.local`:
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | Your Supabase project URL. |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | yes | Public/anon key. Safe in the browser; RLS is the boundary. |
-| `SUPABASE_SECRET_KEY` | yes | Service-role/secret key. **Server side only.** Used for `auth.admin` calls such as member invites. |
+| `SUPABASE_SECRET_KEY` | no | Service-role/secret key. **Server side only.** Only needed for `auth.admin` calls: inviting members and deleting diagram versions. Everything else works without it. |
 | `OPENAI_API_KEY` | no | Enables model-based architecture reviews. Without it the offline rules engine is used. |
 | `OPENAI_BASE_URL` | no | Point at any OpenAI-compatible gateway. Defaults to `https://api.openai.com/v1`. |
 | `OPENAI_MODEL` | no | Defaults to `gpt-4o-mini`. |
 
 > `.env*` is git-ignored. Never commit `SUPABASE_SECRET_KEY`, and never prefix
 > it with `NEXT_PUBLIC_`.
+>
+> This key bypasses RLS. If it is ever pasted into a chat, a log, a screenshot or
+> a commit, treat it as burned: create a new one in Supabase → **Project Settings
+> → API**, replace it everywhere, and delete the old key. Removing it from Vercel
+> alone does not revoke it.
 
 ### 3. Create the database schema
 
@@ -65,6 +70,20 @@ creates:
 - A 34-row service catalog seed used by the cost planner
 - `my_projects()` and `project_role()` helper functions
 - Row Level Security on every user-facing table
+
+#### Who becomes the platform admin
+
+A new signup is always created as `viewer`. The first account whose email address
+is **confirmed** is promoted to the platform `admin` role, so an address that
+signs up but never confirms can never end up holding admin. If email
+confirmations are disabled in your Supabase project, the first confirmed-at-insert
+account is promoted instead.
+
+To promote somebody else later:
+
+```sql
+update public.profiles set role = 'admin' where email = 'someone@example.com';
+```
 
 ### 4. Run it
 

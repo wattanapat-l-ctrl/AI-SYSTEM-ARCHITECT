@@ -55,6 +55,13 @@ export function InviteMemberForm({ projectId }: { projectId: string }) {
           </span>
         ))}
       </p>
+
+      {state.status === "error" && state.message.includes("admin key") ? (
+        <p className="text-[11px] text-muted-foreground">
+          This deployment has no <code className="font-mono">SUPABASE_SECRET_KEY</code>, so
+          members cannot be looked up by email. Everything else on this page still works.
+        </p>
+      ) : null}
     </form>
   );
 }

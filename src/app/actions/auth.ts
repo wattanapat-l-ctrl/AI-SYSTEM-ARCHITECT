@@ -504,9 +504,10 @@ export async function inviteMemberAction(
   // RLS only exposes profiles the caller shares a project with, so the
   // email -> id lookup needs the elevated key.
   if (!isAdminConfigured()) {
-    return actionError("Server admin key is not configured, so members cannot be looked up by email.", {
-      email: "Admin key required",
-    });
+    return actionError(
+      "This deployment has no admin key, so members cannot be looked up by email.",
+      { email: "Admin key required" },
+    );
   }
 
   const admin = createAdminClient();
